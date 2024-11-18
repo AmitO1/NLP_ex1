@@ -17,7 +17,6 @@ def gradcheck_naive(f, x, gradient_text=""):
     random.setstate(rndstate)
     fx, grad = f(x)  # Evaluate function value at original point
     h = 1e-4         # Do not change this!
-
     # Iterate over all indexes ix in x to check the gradient.
     it = np.nditer(x, flags=['multi_index'], op_flags=['readwrite'])
     while not it.finished:
@@ -36,7 +35,24 @@ def gradcheck_naive(f, x, gradient_text=""):
         # to test cost functions with built in randomness later.
 
         ### YOUR CODE HERE:
-        raise NotImplementedError
+        
+        # Copy x to x plus and x minus to computer central difference
+        x_plus_h = x.copy()
+        x_minus_h = x.copy()
+        
+        # Add and subtract h to x[ix]
+        x_plus_h[ix] += h
+        x_minus_h[ix] -= h
+        
+        # Re-evaluate function 
+        random.setstate(rndstate)  # Reset random state to keep things consistent
+        fx_plus_h, _ = f(x_plus_h)
+        random.setstate(rndstate)  # Reset random state
+        fx_minus_h, _ = f(x_minus_h)
+
+        # Central difference formula to estimate the gradient
+        numgrad = (fx_plus_h - fx_minus_h) / (2 * h)
+
         ### END YOUR CODE
 
         # Compare gradients
