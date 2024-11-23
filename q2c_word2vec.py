@@ -4,8 +4,11 @@ import random
 import numpy as np
 
 from helpers.utils import normalize_rows, sigmoid, get_negative_samples
-from q3a_softmax import softmax
-from q3b_gradcheck import gradcheck_naive
+from q2a_softmax import softmax
+from q2b_gradcheck import gradcheck_naive
+
+def apply_func(func, u, v):
+    return func(u.transpose()*v)  # computes the dot product and applies softmax
 
 
 def naive_softmax_loss_and_gradient(
@@ -36,11 +39,20 @@ def naive_softmax_loss_and_gradient(
     grad_outside_vecs -- the gradient with respect to all the outside word vectors
                     (dJ / dU)
     """
+    outside_vector = outside_vectors[outside_word_idx]  # pick the indexed vector
 
-    ### YOUR CODE HERE
-    raise NotImplementedError
-    ### END YOUR CODE
+    y_hat = apply_func(softmax, outside_vectors, center_word_vec)
+    loss = - np.log(apply_func(softmax, outside_vector, center_word_vec))
+    print(outside_vectors[1], center_word_vec)
+    print("func+"+str(apply_func(softmax,outside_vectors[1], center_word_vec)))
+    sum_softmax = np.apply_along_axis(lambda row: apply_func(softmax,row, center_word_vec), axis=1, arr = outside_vectors)
+    partial_sum = np.sum(outside_vectors * sum_softmax[:, np.newaxis], axis=0)
 
+    y  = np.zeros(outside_vectors.shape[0], dtype=int)
+    y[outside_word_idx] = 1
+    grad_center_vec = center_word_vec - partial_sum
+
+    grad_outside_vecs = center_word_vec * ((y.transpose()*y_hat ) -1)
     return loss, grad_center_vec, grad_outside_vecs
 
 
@@ -65,14 +77,23 @@ def neg_sampling_loss_and_gradient(
     Arguments/Return Specifications: same as naive_softmax_loss_and_gradient
     """
 
-    # Negative sampling of words is done for you. Do not modify this if you
-    # wish to match the autograder and receive points!
+
+    grad_outside_vecs = np.zeros_like(outside_vectors)
+    outside_vector = outside_vectors[outside_word_idx]  # pick the indexed vector
+    loss = - np.log(apply_func(sigmoid, outside_vector, center_word_vec))
+
     neg_sample_word_indices = get_negative_samples(outside_word_idx, dataset, K)
     indices = [outside_word_idx] + neg_sample_word_indices
 
-    ### YOUR CODE HERE
-    raise NotImplementedError
-    ### END YOUR CODE
+    grad_center_vec = -(1 - apply_func(sigmoid, outside_vector, center_word_vec)) *outside_vector
+
+    for neg_sample_idx in neg_sample_word_indices:
+        u_k = outside_vectors[neg_sample_idx]
+        loss -= np.log(apply_func(sigmoid, -u_k, center_word_vec))
+        neg_score = apply_func(sigmoid, -u_k, center_word_vec)
+        grad_center_vec += (1 - neg_score) * u_k
+        grad_outside_vecs[neg_sample_idx] += -(1-neg_score)*center_word_vec
+
 
     return loss, grad_center_vec, grad_outside_vecs
 
@@ -100,8 +121,7 @@ def skipgram(current_center_word, outside_words, word2ind,
                                loss functions you implemented above.
 
     Return:
-    loss -- the loss function value for the skip-gram model
-            (J in the pdf handout)
+    loss -- the loss function value for the skip-gram model           (J in the pdf handout)
     grad_center_vecs -- the gradient with respect to the center word vectors
             (dJ / dV in the pdf handout)
     grad_outside_vectors -- the gradient with respect to the outside word vectors
@@ -110,10 +130,21 @@ def skipgram(current_center_word, outside_words, word2ind,
     loss = 0.0
     grad_center_vecs = np.zeros(center_word_vectors.shape)
     grad_outside_vectors = np.zeros(outside_vectors.shape)
+    m = len(outside_words)
+    t = word2ind[current_center_word]
 
-    ### YOUR CODE HERE
-    raise NotImplementedError
-    ### END YOUR CODE
+    print(center_word_vectors)
+    print("center_word_vectors")
+    current_center_vec = center_word_vectors[t]
+
+    for outside_word in outside_words:
+        word_idx = word2ind[outside_word]
+        current_loss, grad_center, grad_outside= word2vec_loss_and_gradient(current_center_vec, word_idx, outside_vectors, dataset)
+        loss += current_loss
+        grad_center_vecs[t] +=grad_center
+        grad_outside_vectors[t] +=grad_outside
+
+
 
     return loss, grad_center_vecs, grad_outside_vectors
 
