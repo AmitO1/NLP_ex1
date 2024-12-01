@@ -85,11 +85,8 @@ def sgd(f, x0, step, iterations, postprocessing=None, use_saved=False,
     for iter_ in range(start_iter + 1, iterations + 1):
         # You might want to print the progress every few iterations.
 
-        loss = None
-        ### YOUR CODE HERE
-        raise NotImplementedError
-        ### END YOUR CODE
-
+        loss, gradient = f(x)
+        x  -= step * gradient
         x = postprocessing(x)
         if iter_ % print_every == 0:
             if not exploss:
